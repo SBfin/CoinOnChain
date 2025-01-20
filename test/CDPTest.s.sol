@@ -74,8 +74,7 @@ contract CDPTest is Test {
         assertLt(cdp.getCollateralRatio(address(this)), cdp.LIQUIDATION_THRESHOLD());
         // liquidate
         vm.prank(liquidator);
-        cdp.liquidate(address(this));
-        (uint256 collateral, uint256 debt) = cdp.balances(address(this));
+        cdp.liquidate(address(this), INITIAL_BORROW*50/100);
     }
 
     receive() external payable {}

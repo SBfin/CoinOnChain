@@ -49,6 +49,10 @@ contract CDP is Ownable, ERC20 {
     error PositionNotLiquidatable();
     error InvalidAmount();
     error InsufficientSynteticAssets();
+    error LiquidationNotBringingHFAboveThreshold();
+    error RewardTransferFailed();
+    error CollateralTransferFailed();
+
     constructor() Ownable(msg.sender) ERC20("Coinbase", "COIN") {
         pyth = IPyth(pythContract);
     }
@@ -141,12 +145,17 @@ contract CDP is Ownable, ERC20 {
                 
         // update user's collateral
         // send the collateral back to the user
+        balances[user].collateral = balances[user].collateral - amountToWithDraw;
 
-        balances[user].collateral = balances[user].collateral + amountToWithDraw - reward;
-        
+        if (!isLiquidatable(user)) revert LiquidationNotBringingHFAboveThreshold();
+
         // Transfer reward to liquidator
-        (bool success, ) = msg.sender.call{value: reward}("");
-        require(success, "Reward transfer failed");
+        (bool successReward, ) = msg.sender.call{value: reward}("");
+        if (!successReward) revert RewardTransferFailed();
+
+        // Transfer collateral to user
+        (bool successCollateral, ) = user.call{value: amountToWithDraw - reward}("");
+        if (!successCollateral) revert CollateralTransferFailed();
         
         emit PositionLiquidated(user, msg.sender, reward);
     }
